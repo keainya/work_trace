@@ -173,7 +173,8 @@ func ListWorkItems(c *gin.Context) {
 		query = query.Where("title LIKE ?", "%"+keyword+"%")
 	}
 
-	// 排序（默认按更新时间倒序）
+	// 排序：未完成优先，再按更新时间倒序
+	query = query.Order("completed ASC")
 	sortBy := c.DefaultQuery("sort", "updated_at")
 	order := c.DefaultQuery("order", "desc")
 	query = query.Order(sortBy + " " + order)
