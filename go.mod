@@ -1,4 +1,4 @@
-module github.com/keainya/service_temp
+module github.com/keainya/work_trace
 
 go 1.25.6
 

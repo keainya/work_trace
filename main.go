@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/keainya/service_temp/object"
-	"github.com/keainya/service_temp/router"
+	"github.com/keainya/work_trace/object"
+	"github.com/keainya/work_trace/router"
 )
 
 func main() {

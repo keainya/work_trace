@@ -10,7 +10,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/keainya/service_temp/service"
+	"github.com/keainya/work_trace/service"
 )
 
 func InitRouter(webFS embed.FS) *gin.Engine {
