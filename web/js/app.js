@@ -19,6 +19,7 @@ let accessToken  = null;
 let refreshToken = null;
 let currentPage  = null;
 let toastTimer   = null;
+let currentItemOriginal = null; // 详情页原始数据，用于检测变更
 
 // OAuth 配置（从 /api/oauth/config 动态获取）
 let OAUTH_CONFIG = null;
@@ -62,6 +63,13 @@ function formatTime(iso) {
     const d = new Date(iso);
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function toDatetimeLocal(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // ---------- Toast ----------
@@ -453,6 +461,17 @@ async function renderDetail(itemId) {
 }
 
 async function showDetail(item) {
+    // 保存原始数据用于检测变更
+    currentItemOriginal = {
+        id: item.id,
+        title: item.title || '',
+        detail: item.detail || '',
+        start_time: item.start_time || '',
+        end_time: item.end_time || '',
+        remind_at: item.remind_at || '',
+        completed: item.completed
+    };
+
     const completedCls = item.completed ? ' completed' : '';
 
     $main.innerHTML = `
@@ -463,21 +482,41 @@ async function showDetail(item) {
                 <button class="btn btn-outline btn-sm" onclick="toggleCompleteItem('${escJs(item.id)}', ${item.completed})">
                     ${item.completed ? '取消完成' : '标记完成'}
                 </button>
-                <button class="btn btn-outline btn-sm" onclick="editItemModal('${escJs(item.id)}','${escJs(item.title)}','${escJs(item.detail||'')}','${escJs(item.start_time||'')}','${escJs(item.end_time||'')}','${escJs(item.remind_at||'')}')">编辑</button>
+                <button class="btn btn-primary btn-sm" id="btn-save-item" disabled onclick="saveItemInline('${escJs(item.id)}')">保存</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteItemConfirm('${escJs(item.id)}','${escJs(item.title)}')">删除</button>
             </div>
         </div>
 
-        <div class="item-detail-header${completedCls}" style="margin-top:16px;">
-            <h2>${escHtml(item.title)}</h2>
-            <div class="detail-meta">
-                ${item.start_time ? '<span>&#x1F4C5; 开始: ' + formatDate(item.start_time) + '</span>' : ''}
-                ${item.end_time ? '<span>&#x23F0; 结束: ' + formatDate(item.end_time) + '</span>' : ''}
-                ${item.remind_at ? '<span>&#x1F514; 提醒: ' + formatTime(item.remind_at) + '</span>' : ''}
-            </div>
+        <div style="margin-top:16px;">
+            <input id="detail-title" type="text" value="${escAttr(item.title)}" placeholder="标题"
+                   oninput="checkDirty()"
+                   style="width:100%;font-size:20px;font-weight:600;border:none;border-bottom:2px solid var(--c-border);
+                          padding:4px 0;outline:none;background:transparent;font-family:var(--font);"
+                   class="${completedCls}">
         </div>
 
-        ${item.detail ? '<div style="margin:16px 0;white-space:pre-wrap;line-height:1.8;">' + escHtml(item.detail) + '</div>' : ''}
+        <div class="detail-meta" style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+            <label style="font-size:13px;color:var(--c-text-sub);display:flex;align-items:center;gap:4px;">
+                &#x1F4C5; 开始 <input type="datetime-local" id="detail-start" value="${escAttr(toDatetimeLocal(item.start_time))}" oninput="checkDirty()"
+                    style="border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:4px 8px;font-size:13px;font-family:var(--font);margin-left:2px;">
+            </label>
+            <label style="font-size:13px;color:var(--c-text-sub);display:flex;align-items:center;gap:4px;">
+                &#x23F0; 结束 <input type="datetime-local" id="detail-end" value="${escAttr(toDatetimeLocal(item.end_time))}" oninput="checkDirty()"
+                    style="border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:4px 8px;font-size:13px;font-family:var(--font);margin-left:2px;">
+            </label>
+            <label style="font-size:13px;color:var(--c-text-sub);display:flex;align-items:center;gap:4px;">
+                &#x1F514; 提醒 <input type="datetime-local" id="detail-remind" value="${escAttr(toDatetimeLocal(item.remind_at))}" oninput="checkDirty()"
+                    style="border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:4px 8px;font-size:13px;font-family:var(--font);margin-left:2px;">
+            </label>
+        </div>
+
+        <div style="margin-top:16px;">
+            <textarea id="detail-text" placeholder="详细说明..." oninput="checkDirty()"
+                style="width:100%;min-height:120px;border:1px solid var(--c-border);border-radius:var(--radius-sm);
+                       padding:10px 12px;font-size:14px;line-height:1.8;font-family:var(--font);outline:none;resize:vertical;
+                       background:var(--c-bg);color:var(--c-text);"
+            >${escHtml(item.detail || '')}</textarea>
+        </div>
     </div>
 
     <!-- 子任务 -->
@@ -502,6 +541,56 @@ async function showDetail(item) {
 
     // 加载子任务
     loadSubTasks(item.id);
+}
+
+function checkDirty() {
+    if (!currentItemOriginal) return;
+    const btn = document.getElementById('btn-save-item');
+    if (!btn) return;
+
+    const title = document.getElementById('detail-title');
+    const start = document.getElementById('detail-start');
+    const end   = document.getElementById('detail-end');
+    const remind= document.getElementById('detail-remind');
+    const detail= document.getElementById('detail-text');
+
+    const changed =
+        (title  && title.value.trim()  !== currentItemOriginal.title) ||
+        (start  && start.value         !== toDatetimeLocal(currentItemOriginal.start_time)) ||
+        (end    && end.value           !== toDatetimeLocal(currentItemOriginal.end_time)) ||
+        (remind && remind.value        !== toDatetimeLocal(currentItemOriginal.remind_at)) ||
+        (detail && detail.value        !== currentItemOriginal.detail);
+
+    btn.disabled = !changed;
+}
+
+async function saveItemInline(itemId) {
+    const title  = document.getElementById('detail-title');
+    const start  = document.getElementById('detail-start');
+    const end    = document.getElementById('detail-end');
+    const remind = document.getElementById('detail-remind');
+    const detail = document.getElementById('detail-text');
+
+    if (!title || !title.value.trim()) {
+        showToast('标题不能为空', 'error');
+        return;
+    }
+
+    try {
+        await apiPut('/api/work-items/' + itemId, {
+            title:      title.value.trim(),
+            detail:     detail ? detail.value : '',
+            start_time: start ? start.value : '',
+            end_time:   end   ? end.value   : '',
+            remind_at:  remind? remind.value: ''
+        });
+        showToast('已保存', 'success');
+        // 重新加载详情以更新状态
+        const res = await apiGet('/api/work-items/' + itemId);
+        showDetail(res.data);
+    } catch (err) {
+        showToast(err.msg || '保存失败', 'error');
+    }
 }
 
 // ---------- 子任务 ----------

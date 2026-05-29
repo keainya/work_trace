@@ -200,7 +200,9 @@ a:hover { color: var(--c-primary-h); }
     white-space: nowrap;
     line-height: 1.4;
 }
-.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary:disabled { background: var(--c-border); color: var(--c-text-sub); }
+.btn-primary:disabled:hover { background: var(--c-border); }
 
 /* 变体 */
 .btn-primary {
@@ -773,6 +775,12 @@ table .actions { display: flex; gap: 8px; align-items: center; }
     }
     .detail-meta {
         flex-direction: column;
-        gap: 4px;
+        gap: 6px;
+    }
+    .detail-meta label {
+        width: 100%;
+    }
+    .detail-meta input[type="datetime-local"] {
+        flex: 1;
     }
 }
