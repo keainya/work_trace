@@ -3,8 +3,10 @@ package router
 import (
 	"embed"
 	"io/fs"
+	"mime"
 	"net/http"
-	"time"
+	"path/filepath"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -13,7 +15,8 @@ import (
 )
 
 func InitRouter(webFS embed.FS) *gin.Engine {
-	r := gin.Default()
+	r := gin.New() // 不用 Default()，避免 RedirectTrailingSlash
+	r.Use(gin.Recovery())
 
 	// ---- CORS 中间件 ----
 	r.Use(cors.New(cors.Config{
@@ -22,24 +25,12 @@ func InitRouter(webFS embed.FS) *gin.Engine {
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
 	}))
 
-	// ---- 嵌入式前端静态文件 ----
 	staticFS, err := fs.Sub(webFS, "web")
 	if err != nil {
 		panic(err)
 	}
-	// 静态资源（css/js/ico 等）
-	r.GET("/css/*filepath", func(c *gin.Context) {
-		c.FileFromFS("css/"+c.Param("filepath"), http.FS(staticFS))
-	})
-	r.GET("/js/*filepath", func(c *gin.Context) {
-		c.FileFromFS("js/"+c.Param("filepath"), http.FS(staticFS))
-	})
-	r.GET("/favicon.ico", func(c *gin.Context) {
-		c.FileFromFS("favicon.ico", http.FS(staticFS))
-	})
 
 	// ---- 公开 API ----
 	r.GET("/api/status", service.Status)
@@ -50,7 +41,6 @@ func InitRouter(webFS embed.FS) *gin.Engine {
 	auth := r.Group("/api")
 	auth.Use(utils.AuthMiddleware())
 	{
-		// 工作项
 		auth.GET("/work-items", service.ListWorkItems)
 		auth.POST("/work-items", service.CreateWorkItem)
 		auth.GET("/work-items/:id", service.GetWorkItem)
@@ -58,30 +48,57 @@ func InitRouter(webFS embed.FS) *gin.Engine {
 		auth.DELETE("/work-items/:id", service.DeleteWorkItem)
 		auth.POST("/work-items/:id/toggle-complete", service.ToggleComplete)
 
-		// 子任务
 		auth.GET("/work-items/:id/sub-tasks", service.ListSubTasks)
 		auth.POST("/work-items/:id/sub-tasks", service.CreateSubTask)
 		auth.PUT("/work-items/:id/sub-tasks/:sub_id", service.UpdateSubTask)
 		auth.DELETE("/work-items/:id/sub-tasks/:sub_id", service.DeleteSubTask)
 		auth.POST("/work-items/:id/sub-tasks/:sub_id/toggle", service.ToggleSubTaskComplete)
 
-		// 工作记录（懒加载）
 		auth.GET("/work-items/:id/records", service.ListWorkRecords)
 	}
 
-	// ---- SPA 兜底：非 API/静态资源 → index.html ----
+	// ---- 前端静态文件 & SPA 兜底 ----
+	// 用 fs.ReadFile 直接读内容回写，完全避开 http.ServeFileFS 的目录重定向
 	r.NoRoute(func(c *gin.Context) {
-		path := c.Request.URL.Path
-		if path == "/" || path == "/index.html" {
-			c.FileFromFS("index.html", http.FS(staticFS))
+		// 只处理 GET/HEAD
+		if c.Request.Method != "GET" && c.Request.Method != "HEAD" {
+			c.Status(http.StatusMethodNotAllowed)
 			return
 		}
+
+		upath := c.Request.URL.Path
+
 		// API 路径不兜底
-		if len(path) >= 5 && path[:5] == "/api/" {
+		if strings.HasPrefix(upath, "/api/") {
 			c.JSON(http.StatusNotFound, service.Response{Code: 404, Msg: "not found"})
 			return
 		}
-		c.FileFromFS("index.html", http.FS(staticFS))
+
+		name := strings.TrimPrefix(upath, "/")
+		if name == "" {
+			name = "index.html"
+		}
+
+		// 直接读文件内容，不走 http.FileSystem（避免重定向）
+		data, readErr := fs.ReadFile(staticFS, name)
+		if readErr != nil {
+			// 文件不存在 → SPA 兜底到 index.html
+			data, readErr = fs.ReadFile(staticFS, "index.html")
+			if readErr != nil {
+				c.Status(http.StatusNotFound)
+				return
+			}
+			c.Data(http.StatusOK, "text/html; charset=utf-8", data)
+			return
+		}
+
+		// 根据扩展名设置 Content-Type
+		ext := filepath.Ext(name)
+		ct := mime.TypeByExtension(ext)
+		if ct == "" {
+			ct = "application/octet-stream"
+		}
+		c.Data(http.StatusOK, ct, data)
 	})
 
 	return r
