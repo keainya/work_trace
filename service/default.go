@@ -48,20 +48,30 @@ func addWorkRecord(itemID, action, detail string) {
 func diffDesc(old, new *object.WorkItem, action string) string {
 	switch action {
 	case "create":
-		return fmt.Sprintf("创建了工作项「%s」", new.Title)
+		desc := fmt.Sprintf("创建了工作项「%s」", new.Title)
+		if new.StartTime != nil {
+			desc += "；开始时间: " + formatTimeStr(new.StartTime)
+		}
+		if new.EndTime != nil {
+			desc += "；结束时间: " + formatTimeStr(new.EndTime)
+		}
+		return desc
 	case "update":
 		parts := []string{}
 		if old.Title != new.Title {
-			parts = append(parts, fmt.Sprintf("标题: %s → %s", old.Title, new.Title))
+			parts = append(parts, fmt.Sprintf("标题: 「%s」→「%s」", old.Title, new.Title))
 		}
 		if old.Detail != new.Detail {
-			parts = append(parts, "修改了详细说明")
+			parts = append(parts, "详细说明: "+truncate(new.Detail, 200))
 		}
-		if !timePtrEqual(old.StartTime, new.StartTime) || !timePtrEqual(old.EndTime, new.EndTime) {
-			parts = append(parts, "修改了时间")
+		if !timePtrEqual(old.StartTime, new.StartTime) {
+			parts = append(parts, "开始时间: "+formatTimeDiff(old.StartTime, new.StartTime))
+		}
+		if !timePtrEqual(old.EndTime, new.EndTime) {
+			parts = append(parts, "结束时间: "+formatTimeDiff(old.EndTime, new.EndTime))
 		}
 		if !timePtrEqual(old.RemindAt, new.RemindAt) {
-			parts = append(parts, "修改了提醒时间")
+			parts = append(parts, "提醒时间: "+formatTimeDiff(old.RemindAt, new.RemindAt))
 		}
 		if len(parts) == 0 {
 			parts = append(parts, "更新了工作项")
@@ -74,6 +84,33 @@ func diffDesc(old, new *object.WorkItem, action string) string {
 	default:
 		return action
 	}
+}
+
+func formatTimeStr(t *time.Time) string {
+	if t == nil {
+		return "(未设置)"
+	}
+	return t.Format("2006-01-02 15:04")
+}
+
+func formatTimeDiff(old, new *time.Time) string {
+	oldStr := "(未设置)"
+	newStr := "(未设置)"
+	if old != nil {
+		oldStr = old.Format("2006-01-02 15:04")
+	}
+	if new != nil {
+		newStr = new.Format("2006-01-02 15:04")
+	}
+	return fmt.Sprintf("%s → %s", oldStr, newStr)
+}
+
+func truncate(s string, maxLen int) string {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen]) + "…"
 }
 
 func timePtrEqual(a, b *time.Time) bool {
@@ -344,7 +381,7 @@ func CreateSubTask(c *gin.Context) {
 	}
 	object.Database.Create(&sub)
 
-	addWorkRecord(workItemID, "update", fmt.Sprintf("添加了子任务：%s", sub.Content))
+	addWorkRecord(workItemID, "update", fmt.Sprintf("添加了子任务「%s」", sub.Content))
 
 	c.JSON(http.StatusCreated, ok(sub))
 }
@@ -373,6 +410,9 @@ func UpdateSubTask(c *gin.Context) {
 		return
 	}
 
+	// 保存旧值用于 diff
+	oldContent := sub.Content
+
 	updates := map[string]interface{}{
 		"updated_at": time.Now(),
 	}
@@ -385,6 +425,18 @@ func UpdateSubTask(c *gin.Context) {
 
 	object.Database.Model(&sub).Updates(updates)
 	object.Database.First(&sub, "id = ?", subTaskID)
+
+	// 记录子任务更新
+	parts := []string{}
+	if input.Content != "" && input.Content != oldContent {
+		parts = append(parts, fmt.Sprintf("内容: 「%s」→「%s」", oldContent, input.Content))
+	}
+	if input.StartTime != "" || input.EndTime != "" || input.RemindAt != "" {
+		parts = append(parts, "调整了时间/提醒")
+	}
+	if len(parts) > 0 {
+		addWorkRecord(workItemID, "update", fmt.Sprintf("更新了子任务: %s", joinParts(parts)))
+	}
 
 	c.JSON(http.StatusOK, ok(sub))
 }
@@ -412,11 +464,11 @@ func ToggleSubTaskComplete(c *gin.Context) {
 		"updated_at": time.Now(),
 	})
 
-	action := "子任务已完成"
-	if !newCompleted {
-		action = "子任务已取消完成"
+	if newCompleted {
+		addWorkRecord(workItemID, "update", fmt.Sprintf("子任务「%s」标记为已完成", sub.Content))
+	} else {
+		addWorkRecord(workItemID, "update", fmt.Sprintf("子任务「%s」取消完成", sub.Content))
 	}
-	addWorkRecord(workItemID, "update", fmt.Sprintf("%s：%s", action, sub.Content))
 
 	c.JSON(http.StatusOK, ok(gin.H{"completed": newCompleted}))
 }
@@ -439,7 +491,7 @@ func DeleteSubTask(c *gin.Context) {
 	}
 
 	object.Database.Delete(&sub)
-	addWorkRecord(workItemID, "update", fmt.Sprintf("删除了子任务：%s", sub.Content))
+	addWorkRecord(workItemID, "update", fmt.Sprintf("删除了子任务「%s」", sub.Content))
 
 	c.JSON(http.StatusOK, ok(nil))
 }
