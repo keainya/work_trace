@@ -537,3 +537,242 @@ table .actions { display: flex; gap: 8px; align-items: center; }
     #main { max-width: none; padding: 0; }
     .card { box-shadow: none; border: 1px solid #ccc; }
 }
+
+/* ============================================
+   工作管理专属样式
+   ============================================ */
+
+/* 工作项列表 - 卡片网格 */
+.work-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+.item-card {
+    background: var(--c-bg);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: 0 1px 4px var(--c-shadow);
+    cursor: pointer;
+    transition: .15s;
+    position: relative;
+}
+.item-card:hover {
+    box-shadow: 0 2px 12px var(--c-shadow);
+    border-color: var(--c-primary);
+}
+.item-card.completed {
+    opacity: 0.65;
+}
+.item-card.completed .item-title {
+    text-decoration: line-through;
+    color: var(--c-text-sub);
+}
+.item-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    padding-right: 60px; /* 给状态标签留空间 */
+}
+.item-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--c-text-sub);
+    flex-wrap: wrap;
+}
+.item-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.item-progress {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--c-text-sub);
+}
+.completed-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #e8ffea;
+    color: var(--c-success);
+}
+
+/* 工具栏 */
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.toolbar .search-input {
+    flex: 1;
+    min-width: 160px;
+    max-width: 300px;
+}
+.toolbar select {
+    padding: 8px 12px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    background: var(--c-bg);
+    color: var(--c-text);
+    outline: none;
+}
+.toolbar select:focus {
+    border-color: var(--c-primary);
+}
+
+/* 详情页 */
+.item-detail-header {
+    margin-bottom: 20px;
+}
+.item-detail-header h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.item-detail-header.completed h2 {
+    text-decoration: line-through;
+    color: var(--c-text-sub);
+}
+.detail-meta {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--c-text-sub);
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+/* 子任务列表 */
+.subtask-list {
+    list-style: none;
+}
+.subtask-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--c-border);
+}
+.subtask-item:last-child {
+    border-bottom: none;
+}
+.subtask-item .check-box {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    border: 2px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: .15s;
+    color: transparent;
+    font-size: 12px;
+}
+.subtask-item .check-box.checked {
+    background: var(--c-primary);
+    border-color: var(--c-primary);
+    color: #fff;
+}
+.subtask-content {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.7;
+}
+.subtask-content.completed {
+    text-decoration: line-through;
+    color: var(--c-text-sub);
+}
+.subtask-time {
+    font-size: 12px;
+    color: var(--c-text-sub);
+    margin-top: 2px;
+}
+.subtask-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.subtask-actions .btn {
+    padding: 2px 6px;
+    font-size: 12px;
+}
+
+/* 工作记录 */
+.records-toggle {
+    text-align: center;
+    padding: 12px;
+    font-size: 13px;
+    color: var(--c-text-sub);
+    cursor: pointer;
+    border-top: 1px solid var(--c-border);
+    transition: .15s;
+    user-select: none;
+}
+.records-toggle:hover {
+    color: var(--c-primary);
+}
+.record-list {
+    border-top: 1px solid var(--c-border);
+}
+.record-item {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--c-border);
+    font-size: 13px;
+}
+.record-item:last-child {
+    border-bottom: none;
+}
+.record-time {
+    color: var(--c-text-sub);
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+/* 内联表单 */
+.inline-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+.inline-form input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: var(--font);
+    outline: none;
+}
+.inline-form input:focus {
+    border-color: var(--c-primary);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .work-items-grid {
+        grid-template-columns: 1fr;
+    }
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .toolbar .search-input {
+        max-width: none;
+    }
+    .detail-meta {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
