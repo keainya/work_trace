@@ -1,0 +1,14 @@
+# work_trace 配置文件
+# 复制此文件为 config.toml 并填写实际值
+
+[server]
+# 监听端口
+port = 8086
+
+[account]
+# Account 服务的地址
+base_url = "https://account.takemeto.icu"
+
+# OAuth2 应用凭证（在 Account 服务注册应用后获取）
+client_id     = "app_work_trace"
+client_secret = "your_client_secret_here"

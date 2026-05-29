@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const AccountBaseURL = "https://account.takemeto.icu"
+// AccountBaseURL 由 utils.Config.AccountBaseURL 提供
 
 // UserInfo Account 服务返回的用户信息
 type UserInfo struct {
@@ -52,7 +52,7 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 func validateToken(token string) (*UserInfo, error) {
-	req, err := http.NewRequest("GET", AccountBaseURL+"/oauth/userinfo", nil)
+	req, err := http.NewRequest("GET", Config.AccountBaseURL+"/oauth/userinfo", nil)
 	if err != nil {
 		return nil, err
 	}

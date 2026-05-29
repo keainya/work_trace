@@ -20,10 +20,24 @@ let refreshToken = null;
 let currentPage  = null;
 let toastTimer   = null;
 
-const AUTH_URL  = 'https://account.takemeto.icu/oauth/authorize';
-const TOKEN_URL = 'https://account.takemeto.icu/oauth/token';
-const USERINFO_URL = 'https://account.takemeto.icu/oauth/userinfo';
-const CLIENT_ID = 'app_work_trace';
+// OAuth 配置（从 /api/oauth/config 动态获取）
+let OAUTH_CONFIG = null;
+async function loadOAuthConfig() {
+    try {
+        const res = await fetch('/api/oauth/config');
+        const data = await res.json();
+        OAUTH_CONFIG = data.data;
+    } catch (_) {
+        // 降级到内置默认值
+        OAUTH_CONFIG = {
+            authorize_url: 'https://account.takemeto.icu/oauth/authorize',
+            token_url:     'https://account.takemeto.icu/oauth/token',
+            userinfo_url:  'https://account.takemeto.icu/oauth/userinfo',
+            client_id:     'app_work_trace',
+            redirect_uri:  window.location.protocol + '//' + window.location.host + window.location.pathname
+        };
+    }
+}
 
 // ---------- 转义函数 (XSS 防护) ----------
 function escHtml(s) {
@@ -120,19 +134,17 @@ function apiDel(url)          { return api(url, { method: 'DELETE' }); }
 
 async function doRefreshToken() {
     try {
-        const res = await fetch(TOKEN_URL, {
+        const res = await fetch('/api/oauth/token', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
                 grant_type: 'refresh_token',
-                refresh_token: refreshToken,
-                client_id: CLIENT_ID,
-                client_secret: 'your_client_secret'
+                refresh_token: refreshToken
             })
         });
         const data = await res.json();
-        if (data.access_token) {
-            saveTokens(data.access_token, data.refresh_token);
+        if (data.data && data.data.access_token) {
+            saveTokens(data.data.access_token, data.data.refresh_token);
             return true;
         }
     } catch (_) {}
@@ -141,7 +153,7 @@ async function doRefreshToken() {
 
 async function fetchUserInfo() {
     try {
-        const res = await fetch(USERINFO_URL, {
+        const res = await fetch(OAUTH_CONFIG.userinfo_url, {
             headers: { 'Authorization': 'Bearer ' + accessToken }
         });
         const data = await res.json();
@@ -159,20 +171,15 @@ async function fetchUserInfo() {
 }
 
 // ---------- OAuth2 登录 ----------
-function getRedirectURI() {
-    const loc = window.location;
-    return loc.protocol + '//' + loc.host + loc.pathname;
-}
-
 function startOAuthLogin() {
     const state = Math.random().toString(36).substring(2, 15);
     localStorage.setItem('wt_oauth_state', state);
-    const redirectURI = getRedirectURI();
+    const redirectURI = OAUTH_CONFIG.redirect_uri;
     localStorage.setItem('wt_oauth_redirect', redirectURI);
 
-    const url = AUTH_URL + '?' + new URLSearchParams({
+    const url = OAUTH_CONFIG.authorize_url + '?' + new URLSearchParams({
         response_type: 'code',
-        client_id: CLIENT_ID,
+        client_id: OAUTH_CONFIG.client_id,
         redirect_uri: redirectURI,
         state: state,
         scope: ''
@@ -185,7 +192,7 @@ async function handleOAuthCallback() {
     const code  = params.get('code');
     const state = params.get('state');
     const savedState = localStorage.getItem('wt_oauth_state');
-    const redirectURI = localStorage.getItem('wt_oauth_redirect') || getRedirectURI();
+    const redirectURI = localStorage.getItem('wt_oauth_redirect') || OAUTH_CONFIG.redirect_uri;
 
     if (!code) {
         showToast('授权失败：未获取到授权码', 'error');
@@ -199,29 +206,27 @@ async function handleOAuthCallback() {
     }
 
     try {
-        const res = await fetch(TOKEN_URL, {
+        // token 交换走后端代理（保护 client_secret）
+        const res = await fetch('/api/oauth/token', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                grant_type: 'authorization_code',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
                 code: code,
-                redirect_uri: redirectURI,
-                client_id: CLIENT_ID,
-                client_secret: 'your_client_secret'
+                redirect_uri: redirectURI
             })
         });
         const data = await res.json();
-        if (!data.access_token) {
+        if (!data.data || !data.data.access_token) {
             showToast('登录失败：' + (data.msg || 'token 交换失败'), 'error');
             navigate('#/login');
             return;
         }
-        saveTokens(data.access_token, data.refresh_token);
+        saveTokens(data.data.access_token, data.data.refresh_token);
         localStorage.removeItem('wt_oauth_state');
         localStorage.removeItem('wt_oauth_redirect');
 
         // 清除 URL 参数
-        window.history.replaceState({}, '', getRedirectURI());
+        window.history.replaceState({}, '', OAUTH_CONFIG.redirect_uri);
 
         // 获取用户信息
         const ok = await fetchUserInfo();
@@ -825,6 +830,7 @@ async function loadRecords(itemId) {
 // 启动
 // ============================================
 (async function init() {
+    await loadOAuthConfig();
     loadTokens();
     if (accessToken) {
         await fetchUserInfo();

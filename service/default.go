@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/keainya/work_trace/object"
+	"github.com/keainya/work_trace/utils"
 )
 
 type Response struct {
@@ -479,36 +480,62 @@ type OAuthConfig struct {
 
 func GetOAuthConfig(c *gin.Context) {
 	config := OAuthConfig{
-		AuthURL:     "https://account.takemeto.icu/oauth/authorize",
-		TokenURL:    "https://account.takemeto.icu/oauth/token",
-		UserInfoURL: "https://account.takemeto.icu/oauth/userinfo",
-		ClientID:    "app_work_trace", // TODO: 从 Account 服务注册后获取
+		AuthURL:     utils.Config.AccountBaseURL + "/oauth/authorize",
+		TokenURL:    utils.Config.AccountBaseURL + "/oauth/token",
+		UserInfoURL: utils.Config.AccountBaseURL + "/oauth/userinfo",
+		ClientID:    utils.Config.ClientID,
 		RedirectURI: getRedirectURI(c),
 	}
 	c.JSON(http.StatusOK, ok(config))
 }
 
-// ExchangeToken 代理 token 交换（保护 client_secret）
+// ExchangeToken 代理 token 交换（保护 client_secret 不暴露到前端）
+// 支持 authorization_code 和 refresh_token 两种 grant_type
 type tokenExchangeInput struct {
-	Code        string `json:"code"`
-	RedirectURI string `json:"redirect_uri"`
+	GrantType    string `json:"grant_type"`    // "authorization_code" 或 "refresh_token"
+	Code         string `json:"code"`          // authorization_code 时使用
+	RefreshToken string `json:"refresh_token"` // refresh_token 时使用
+	RedirectURI  string `json:"redirect_uri"`  // authorization_code 时使用
 }
 
 func ExchangeToken(c *gin.Context) {
 	var input tokenExchangeInput
-	if err := c.ShouldBindJSON(&input); err != nil || input.Code == "" {
-		c.JSON(http.StatusBadRequest, fail(1002, "缺少授权码"))
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, fail(1002, "参数校验失败"))
 		return
 	}
 
-	// 调用 Account 服务换取 token
-	resp, err := http.PostForm("https://account.takemeto.icu/oauth/token", map[string][]string{
-		"grant_type":    {"authorization_code"},
-		"code":          {input.Code},
-		"redirect_uri":  {input.RedirectURI},
-		"client_id":     {"app_work_trace"},
-		"client_secret": {"your_client_secret"}, // TODO: 配置化
-	})
+	if input.GrantType == "" {
+		// 兼容旧版：默认 authorization_code
+		input.GrantType = "authorization_code"
+	}
+
+	form := map[string][]string{
+		"grant_type":    {input.GrantType},
+		"client_id":     {utils.Config.ClientID},
+		"client_secret": {utils.Config.ClientSecret},
+	}
+
+	switch input.GrantType {
+	case "authorization_code":
+		if input.Code == "" {
+			c.JSON(http.StatusBadRequest, fail(1002, "缺少授权码"))
+			return
+		}
+		form["code"] = []string{input.Code}
+		form["redirect_uri"] = []string{input.RedirectURI}
+	case "refresh_token":
+		if input.RefreshToken == "" {
+			c.JSON(http.StatusBadRequest, fail(1002, "缺少 refresh_token"))
+			return
+		}
+		form["refresh_token"] = []string{input.RefreshToken}
+	default:
+		c.JSON(http.StatusBadRequest, fail(3006, "不支持的 grant_type"))
+		return
+	}
+
+	resp, err := http.PostForm(utils.Config.AccountBaseURL+"/oauth/token", form)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, fail(9000, "token 交换失败"))
 		return
