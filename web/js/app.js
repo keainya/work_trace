@@ -225,8 +225,8 @@ async function handleOAuthCallback() {
         localStorage.removeItem('wt_oauth_state');
         localStorage.removeItem('wt_oauth_redirect');
 
-        // 清除 URL 参数
-        window.history.replaceState({}, '', OAUTH_CONFIG.redirect_uri);
+        // 清除 URL 参数，回到根路径
+        window.history.replaceState({}, '', '/');
 
         // 获取用户信息
         const ok = await fetchUserInfo();
