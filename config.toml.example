@@ -12,3 +12,7 @@ base_url = "https://account.takemeto.icu"
 # OAuth2 应用凭证（在 Account 服务注册应用后获取）
 client_id     = "app_work_trace"
 client_secret = "your_client_secret_here"
+
+# OAuth2 回调地址（需与 Account 服务注册的 redirect_uris 一致）
+# 留空则根据请求自动推断
+redirect_uri = "http://localhost:8086/oauth/callback"

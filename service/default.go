@@ -607,6 +607,10 @@ func ExchangeToken(c *gin.Context) {
 }
 
 func getRedirectURI(c *gin.Context) string {
+	// 若 config.toml 配置了 redirect_uri，直接使用
+	if utils.Config.RedirectURI != "" {
+		return utils.Config.RedirectURI
+	}
 	scheme := "http"
 	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
 		scheme = "https"

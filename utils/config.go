@@ -19,6 +19,7 @@ type accountConfig struct {
 	BaseURL      string `toml:"base_url"`
 	ClientID     string `toml:"client_id"`
 	ClientSecret string `toml:"client_secret"`
+	RedirectURI  string `toml:"redirect_uri"`
 }
 
 // AppConfig 应用配置
@@ -28,6 +29,7 @@ type AppConfig struct {
 	AccountBaseURL string
 	ClientID       string
 	ClientSecret   string
+	RedirectURI    string // OAuth2 回调地址，留空则自动推断
 }
 
 var Config *AppConfig
@@ -56,6 +58,9 @@ func init() {
 			}
 			if c.Account.ClientSecret != "" {
 				cfg.ClientSecret = c.Account.ClientSecret
+			}
+			if c.Account.RedirectURI != "" {
+				cfg.RedirectURI = c.Account.RedirectURI
 			}
 		}
 	}
