@@ -510,12 +510,13 @@ async function showDetail(item) {
             </label>
         </div>
 
-        <div style="margin-top:16px;">
+        <div style="margin-top:16px;" class="detail-textarea-wrapper">
             <textarea id="detail-text" placeholder="详细说明..." oninput="checkDirty()"
                 style="width:100%;min-height:120px;border:1px solid var(--c-border);border-radius:var(--radius-sm);
-                       padding:10px 12px;font-size:14px;line-height:1.8;font-family:var(--font);outline:none;resize:vertical;
+                       padding:10px 36px 10px 12px;font-size:14px;line-height:1.8;font-family:var(--font);outline:none;resize:vertical;
                        background:var(--c-bg);color:var(--c-text);"
             >${escHtml(item.detail || '')}</textarea>
+            <button class="btn-expand-text" title="全屏编辑" onclick="expandDetailTextarea()">&#x26F6;</button>
         </div>
     </div>
 
@@ -541,6 +542,73 @@ async function showDetail(item) {
 
     // 加载子任务
     loadSubTasks(item.id);
+}
+
+function expandDetailTextarea() {
+    const src = document.getElementById('detail-text');
+    if (!src) return;
+
+    // 移除已存在的全屏层
+    const old = document.getElementById('fullscreen-text-overlay');
+    if (old) old.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'fullscreen-text-overlay';
+    overlay.className = 'fullscreen-text-overlay';
+    overlay.innerHTML = `
+        <div class="fullscreen-text-header">
+            <span>详细说明</span>
+            <button class="btn-collapse-text" onclick="collapseDetailTextarea()">&#x2193; 收起</button>
+        </div>
+        <div class="fullscreen-text-body">
+            <textarea id="fullscreen-text" placeholder="详细说明..." oninput="onFullscreenTextInput()">${src.value}</textarea>
+        </div>`;
+
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    const fsText = document.getElementById('fullscreen-text');
+    fsText.focus();
+    fsText.setSelectionRange(fsText.value.length, fsText.value.length);
+
+    // ESC 关闭
+    overlay._keyHandler = (e) => { if (e.key === 'Escape') collapseDetailTextarea(); };
+    document.addEventListener('keydown', overlay._keyHandler);
+}
+
+function collapseDetailTextarea() {
+    const overlay = document.getElementById('fullscreen-text-overlay');
+    if (!overlay) return;
+
+    const fsText = document.getElementById('fullscreen-text');
+    if (fsText) {
+        const src = document.getElementById('detail-text');
+        if (src && src.value !== fsText.value) {
+            src.value = fsText.value;
+            checkDirty();
+        }
+    }
+
+    if (overlay._keyHandler) {
+        document.removeEventListener('keydown', overlay._keyHandler);
+    }
+
+    overlay.remove();
+    document.body.style.overflow = '';
+
+    // 聚焦回原始 textarea
+    const src = document.getElementById('detail-text');
+    if (src) src.focus();
+}
+
+function onFullscreenTextInput() {
+    // 实时同步回原始 textarea，保持 checkDirty 准确
+    const fsText = document.getElementById('fullscreen-text');
+    const src = document.getElementById('detail-text');
+    if (fsText && src) {
+        src.value = fsText.value;
+    }
+    checkDirty();
 }
 
 function checkDirty() {

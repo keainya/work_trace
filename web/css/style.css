@@ -761,6 +761,97 @@ table .actions { display: flex; gap: 8px; align-items: center; }
     border-color: var(--c-primary);
 }
 
+/* 详细说明全屏编辑 */
+.detail-textarea-wrapper {
+    position: relative;
+}
+.btn-expand-text {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--c-border);
+    background: var(--c-bg);
+    color: var(--c-text-sub);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-family: var(--font);
+    transition: .15s;
+    z-index: 5;
+}
+.btn-expand-text:hover {
+    background: var(--c-bg-alt);
+    color: var(--c-primary);
+    border-color: var(--c-primary);
+}
+
+.fullscreen-text-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: var(--c-bg);
+    display: flex;
+    flex-direction: column;
+}
+.fullscreen-text-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--c-border);
+}
+.fullscreen-text-header span {
+    font-size: 16px;
+    font-weight: 600;
+}
+.btn-collapse-text {
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--c-border);
+    background: var(--c-bg);
+    color: var(--c-text-sub);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--font);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: .15s;
+}
+.btn-collapse-text:hover {
+    background: var(--c-bg-alt);
+    color: var(--c-primary);
+    border-color: var(--c-primary);
+}
+.fullscreen-text-body {
+    flex: 1;
+    padding: 24px;
+    overflow: hidden;
+}
+.fullscreen-text-body textarea {
+    width: 100%;
+    height: 100%;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    font-size: 16px;
+    line-height: 1.8;
+    font-family: var(--font);
+    color: var(--c-text);
+    background: var(--c-bg);
+    outline: none;
+    resize: none;
+}
+.fullscreen-text-body textarea:focus {
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 2px rgba(0,0,0,.15);
+}
+
 /* 移动端适配 */
 @media (max-width: 768px) {
     .work-items-grid {
