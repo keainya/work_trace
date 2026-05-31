@@ -34,3 +34,5 @@ config.toml
 .vscode/
 
 data
+
+deploy.bat
