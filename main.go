@@ -14,10 +14,10 @@ func main() {
 	// 写入 PID 文件，方便脚本管理进程
 	pidPath, err := utils.WritePidFile()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "warn: write pid file:", err)
+		fmt.Fprintln(os.Stderr, "[PID] ERROR:", err)
 	} else {
 		defer utils.RemovePidFile()
-		fmt.Println("pid file:", pidPath)
+		fmt.Fprintln(os.Stderr, "[PID]", pidPath)
 	}
 
 	if object.Database == nil {

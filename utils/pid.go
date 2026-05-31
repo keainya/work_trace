@@ -9,20 +9,29 @@ import (
 // pidFilePath is set by WritePidFile so RemovePidFile knows which file to clean.
 var pidFilePath string
 
-// WritePidFile writes the current process PID into "app.pid" next to the binary.
-// On success it returns the absolute path, which can later be passed to RemovePidFile.
+// WritePidFile writes the current process PID into "app.pid".
+// Tries binary directory first, falls back to working directory.
 func WritePidFile() (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", fmt.Errorf("os.Executable: %w", err)
+	candidates := []string{}
+	if exe, e := os.Executable(); e == nil {
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), "app.pid"))
 	}
-	dir := filepath.Dir(exe)
-	path := filepath.Join(dir, "app.pid")
-	if err := os.WriteFile(path, []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
-		return "", fmt.Errorf("write pid file: %w", err)
+	if cwd, e := os.Getwd(); e == nil {
+		candidates = append(candidates, filepath.Join(cwd, "app.pid"))
 	}
-	pidFilePath = path
-	return path, nil
+
+	var writeErr error
+	for _, p := range candidates {
+		writeErr = os.WriteFile(p, []byte(fmt.Sprintf("%d", os.Getpid())), 0644)
+		if writeErr == nil {
+			pidFilePath = p
+			return p, nil
+		}
+	}
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("no candidate paths")
+	}
+	return "", fmt.Errorf("write app.pid failed: %w", writeErr)
 }
 
 // RemovePidFile deletes the pid file created by WritePidFile.
