@@ -43,6 +43,16 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// 防御：Account 服务返回的用户标识不能为空
+		if user.Sub == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"code": 2001,
+				"msg":  "token 无效或已过期",
+				"data": nil,
+			})
+			return
+		}
+
 		// 存入 context，后续 handler 直接使用
 		c.Set("user_id", user.Sub)
 		c.Set("username", user.Username)

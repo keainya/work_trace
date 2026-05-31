@@ -21,8 +21,15 @@ type Response struct {
 // ---------- 工具函数 ----------
 
 func getUserID(c *gin.Context) string {
-	id, _ := c.Get("user_id")
-	return id.(string)
+	id, exists := c.Get("user_id")
+	if !exists || id == nil {
+		return ""
+	}
+	userID, ok := id.(string)
+	if !ok {
+		return ""
+	}
+	return userID
 }
 
 func ok(data any) Response {
@@ -214,6 +221,10 @@ func GetWorkItem(c *gin.Context) {
 // CreateWorkItem 创建工作项
 func CreateWorkItem(c *gin.Context) {
 	userID := getUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, fail(2001, "未登录"))
+		return
+	}
 
 	var input workItemInput
 	if err := c.ShouldBindJSON(&input); err != nil {

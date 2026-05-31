@@ -32,13 +32,17 @@ func InitRouter(webFS embed.FS) *gin.Engine {
 		panic(err)
 	}
 
-	// ---- 公开 API ----
-	r.GET("/api/status", service.Status)
-	r.GET("/api/oauth/config", service.GetOAuthConfig)
-	r.POST("/api/oauth/token", service.ExchangeToken)
+	// ---- API 根分组 ----
+	api := r.Group("/api")
+	{
+		// 公开 API（无需认证）
+		api.GET("/status", service.Status)
+		api.GET("/oauth/config", service.GetOAuthConfig)
+		api.POST("/oauth/token", service.ExchangeToken)
+	}
 
-	// ---- 需要认证的 API ----
-	auth := r.Group("/api")
+	// 需要认证的 API（嵌套子分组，只对子路由添加 AuthMiddleware）
+	auth := api.Group("")
 	auth.Use(utils.AuthMiddleware())
 	{
 		auth.GET("/work-items", service.ListWorkItems)
