@@ -36,3 +36,5 @@ config.toml
 data
 
 deploy.bat
+
+*.pid

@@ -1,4 +1,3 @@
 set GOOS=linux
-go build -o wt.out
+go build -o app.out
 set GOOS=windows
-go build -o wt.exe
