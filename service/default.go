@@ -359,7 +359,7 @@ func ListSubTasks(c *gin.Context) {
 	}
 
 	var subTasks []object.SubTask
-	object.Database.Where("work_item_id = ?", workItemID).Order("created_at asc").Find(&subTasks)
+	object.Database.Where("work_item_id = ?", workItemID).Order("completed asc, created_at asc").Find(&subTasks)
 	c.JSON(http.StatusOK, ok(subTasks))
 }
 
