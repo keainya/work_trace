@@ -108,6 +108,8 @@ function clearTokens() {
 }
 
 // ---------- API ----------
+let refreshLock = null; // 防止并发刷新
+
 async function api(url, opts = {}) {
     const headers = opts.headers || {};
     if (!(opts.body instanceof FormData)) {
@@ -125,7 +127,8 @@ async function api(url, opts = {}) {
     if (data.code !== 0) {
         // token 过期尝试刷新
         if (data.code === 2001 && refreshToken) {
-            const ok = await doRefreshToken();
+            if (!refreshLock) refreshLock = doRefreshToken();
+            const ok = await refreshLock;
             if (ok) return api(url, opts);
             clearTokens();
             navigate('#/login');
@@ -153,9 +156,11 @@ async function doRefreshToken() {
         const data = await res.json();
         if (data.data && data.data.access_token) {
             saveTokens(data.data.access_token, data.data.refresh_token);
+            refreshLock = null;
             return true;
         }
     } catch (_) {}
+    refreshLock = null;
     return false;
 }
 
