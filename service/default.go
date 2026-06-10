@@ -532,6 +532,19 @@ func Status(c *gin.Context) {
 	c.JSON(http.StatusOK, ok(gin.H{"service": "work_trace", "time": time.Now().Format(time.RFC3339)}))
 }
 
+// GetCurrentUser 返回当前登录用户信息（依赖 AuthMiddleware）
+func GetCurrentUser(c *gin.Context) {
+	userID := getUserID(c)
+	username, _ := c.Get("username")
+	role, _ := c.Get("user_role")
+
+	c.JSON(http.StatusOK, ok(gin.H{
+		"sub":      userID,
+		"username": username,
+		"role":     role,
+	}))
+}
+
 // ---------- OAuth 配置（前端需要） ----------
 
 type OAuthConfig struct {

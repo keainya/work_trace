@@ -45,6 +45,7 @@ func InitRouter(webFS embed.FS) *gin.Engine {
 	auth := api.Group("")
 	auth.Use(utils.AuthMiddleware())
 	{
+		auth.GET("/me", service.GetCurrentUser)
 		auth.GET("/work-items", service.ListWorkItems)
 		auth.POST("/work-items", service.CreateWorkItem)
 		auth.GET("/work-items/:id", service.GetWorkItem)
